@@ -1236,7 +1236,7 @@ This provides the following benefits:
 
 ## Pre-commit hooks
 
-Before commiting, the following things will run against staged files:
+Before committing, the following things will run against staged files:
 
 - **`*.{js,ts,mjs,cjs,vue}`** — `vp lint --fix` (auto-fix lint errors)
 - **`*.vue`** — UnoCSS class checker
