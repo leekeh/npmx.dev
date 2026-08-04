@@ -63,7 +63,6 @@ This focus helps guide our project decisions as a community and what we choose t
   - [Test fixtures (mocking external APIs)](#test-fixtures-mocking-external-apis)
 - [Storybook](#storybook)
   - [Component categories](#component-categories)
-  - [Coverage guidelines](#coverage-guidelines)
   - [Project conventions](#project-conventions)
   - [Configuration](#configuration)
   - [Global app settings](#global-app-settings)
@@ -73,7 +72,6 @@ This focus helps guide our project decisions as a community and what we choose t
   - [Before submitting](#before-submitting)
   - [Pull request process](#pull-request-process)
   - [Commit messages and PR titles](#commit-messages-and-pr-titles)
-- [Pre-commit hooks](#pre-commit-hooks)
 - [Using AI](#using-ai)
 - [Questions](#questions)
 - [License](#license)
@@ -82,8 +80,10 @@ This focus helps guide our project decisions as a community and what we choose t
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (LTS version recommended)
-- [pnpm](https://pnpm.io/) v10.28.1 or later
+- [Node.js](https://nodejs.org/)
+- [pnpm](https://pnpm.io/)
+
+Please use the version pinned in the `engines.node` and `packageManager` field of [package.json](./package.json).
 
 ### Setup
 
@@ -100,7 +100,13 @@ This focus helps guide our project decisions as a community and what we choose t
    pnpm dev
    ```
 
-4. (optional) if you want to test the admin UI/flow, you can run the local connector:
+4. start the connector with mock data:
+
+   ```bash
+   pnpm mock-connector
+   ```
+
+   or with real data (requires npm login):
 
    ```bash
    pnpm npmx-connector
@@ -169,7 +175,7 @@ rm -rf .nuxt/cache/nitro/handlers/
 rm -rf .nuxt/cache/nitro/handlers/npmx-picks/
 ```
 
-Alternatively, you can bypass the cache entirely in development by adding `shouldBypassCache: () => import.meta.dev` to your `defineCachedEventHandler` options:
+Alternatively, you can bypass the cache for a specific API entirely in development by adding `shouldBypassCache: () => import.meta.dev` to your `defineCachedEventHandler` options:
 
 ```ts
 export default defineCachedEventHandler(
@@ -227,7 +233,7 @@ The connector will check your npm authentication, generate a connection token, a
 
 ### Mock connector (for local development)
 
-If you're working on admin features (org management, package access controls, operations queue) and don't want to use your real npm account, you can run the mock connector instead:
+If you don't want to use your real npm account, you can run the mock connector instead:
 
 ```bash
 pnpm mock-connector
@@ -257,11 +263,7 @@ pnpm mock-connector --empty        # start with no prepopulated data
 
 ## Code style
 
-When committing changes, try to keep an eye out for unintended formatting updates. These can make a pull request look noisier than it really is and slow down the review process. Sometimes IDEs automatically reformat files on save, which can unintentionally introduce extra changes.
-
-To help with this, the project uses `oxfmt` to handle formatting via a pre-commit hook. The hook will automatically reformat files when needed. If something can’t be fixed automatically, it will let you know what needs to be updated before you can commit.
-
-If you want to get ahead of any formatting issues, you can also run `pnpm lint:fix` before committing to fix formatting across the whole project.
+When committing changes, try to keep an eye out for unintended formatting updates. These can make a pull request look noisier than it really is and slow down the review process. Sometimes IDEs automatically reformat files on save, which can unintentionally introduce extra changes. To prevent this, you can configure your IDE to use `oxc` as the formatter, which is aligned with the linter used inside the workflows for this project. Alternatively, you can manually run `pnpm lint:fix` before committing to fix formatting across the whole project.
 
 ### npmx name
 
@@ -796,7 +798,7 @@ docker run --rm \
   -e NODE_OPTIONS="--max-old-space-size=4096" \
   -v $(pwd):/work \
   -w /work \
-  mcr.microsoft.com/playwright:v1.58.2-noble \
+  mcr.microsoft.com/playwright:v1.62.1-noble \
   sh -c "npm install -g pnpm && pnpm install && pnpm vp run build:test && pnpm vp run test:browser:prebuilt --update-snapshots"
 ```
 
@@ -827,6 +829,16 @@ Fixtures are stored in `test/fixtures/` with this structure:
 
 ```
 test/fixtures/
+├── algolia/
+│   └── search/           # Algolia search results
+├── esm-sh/
+│   ├── doc-nodes/        # Parsed documentation nodes (exports, types, functions)
+│   ├── headers/          # esm.sh response headers (used to resolve type declarations)
+│   └── types/            # TypeScript type declaration files
+├── github/               # GitHub API responses (contributor stats)
+├── jsdelivr/             # jsDelivr Data API responses (package file lists)
+├── jsdelivr-cdn/         # jsDelivr CDN responses (raw package file content)
+├── microlink/            # Microlink API responses (homepage link previews)
 ├── npm-registry/
 │   ├── packuments/       # Package metadata (vue.json, @nuxt/kit.json)
 │   ├── search/           # Search results (vue.json, nuxt.json)
@@ -883,7 +895,6 @@ cli/src/
 ├── mock-app.ts        # H3 mock app + MockConnectorServer class
 └── mock-server.ts     # CLI entry point (pnpm mock-connector)
 
-test/test-utils/       # Re-exports from cli/src/ for test convenience
 test/e2e/helpers/      # E2E-specific wrappers (fixtures, global setup)
 ```
 
@@ -972,13 +983,9 @@ Single-use components that encapsulate one feature.
 - **Testing focus:** Layout, responsive behavior, integration testing
 - **Coverage:** Critical user flows and breakpoints
 
-### Coverage guidelines
-
-#### Which Components Need Stories?
-
-TBD
-
 ### Project conventions
+
+Stories should follow the [Component Story Format (CSF)](https://storybook.js.org/docs/api/csf).
 
 #### Place `.stories.ts` files next to the component
 
@@ -1223,10 +1230,6 @@ This provides the following benefits:
 
 - it links the pull request to the issue (the merge icon will appear in the issue), so everybody can see there is an open PR
 - when the pull request is merged, the linked issue is automatically closed
-
-## Pre-commit hooks
-
-The project uses `lint-staged` with `simple-git-hooks` to automatically lint files on commit.
 
 ## Using AI
 
