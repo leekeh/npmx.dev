@@ -72,6 +72,7 @@ This focus helps guide our project decisions as a community and what we choose t
   - [Before submitting](#before-submitting)
   - [Pull request process](#pull-request-process)
   - [Commit messages and PR titles](#commit-messages-and-pr-titles)
+- [Pre-commit hooks](#pre-commit-hooks)
 - [Using AI](#using-ai)
 - [Questions](#questions)
 - [License](#license)
@@ -264,6 +265,8 @@ pnpm mock-connector --empty        # start with no prepopulated data
 ## Code style
 
 When committing changes, try to keep an eye out for unintended formatting updates. These can make a pull request look noisier than it really is and slow down the review process. Sometimes IDEs automatically reformat files on save, which can unintentionally introduce extra changes. To prevent this, you can configure your IDE to use `oxc` as the formatter, which is aligned with the linter used inside the workflows for this project. Alternatively, you can manually run `pnpm lint:fix` before committing to fix formatting across the whole project.
+
+Before you commit, staged files will automatically be linted and formatted using a [pre-commit hook](#pre-commit-hooks).
 
 ### npmx name
 
@@ -1230,6 +1233,19 @@ This provides the following benefits:
 
 - it links the pull request to the issue (the merge icon will appear in the issue), so everybody can see there is an open PR
 - when the pull request is merged, the linked issue is automatically closed
+
+## Pre-commit hooks
+
+Before commiting, the following things will run against staged files:
+
+- **`*.{js,ts,mjs,cjs,vue}`** — `vp lint --fix` (auto-fix lint errors)
+- **`*.vue`** — UnoCSS class checker
+- **`*.{js,ts,mjs,cjs,vue,json,yml,md,html,css}`** — `vp fmt` (auto-format)
+- **`i18n/locales/*`** — regenerate Lunaria tracking data and `i18n/schema.json`
+
+If something can't be fixed automatically, the commit will be blocked. Run `pnpm lint:fix` beforehand to resolve any issues proactively.
+
+The configuration for the pre-commit hook is defined in the [`staged` block of vite.config.ts](vite.config.ts#L168-L174) and is automatically installed by running `vp config`, which will run any time you run `pnpm install`.
 
 ## Using AI
 
