@@ -327,10 +327,6 @@ useEventListener(document, 'keydown', handleGlobalKeydown)
             no-password-manager
             size="lg"
             class="w-full"
-            role="combobox"
-            aria-expanded="true"
-            aria-haspopup="listbox"
-            aria-autocomplete="list"
             :aria-describedby="inputDescribedBy"
             :aria-controls="RESULTS_ID"
           />
