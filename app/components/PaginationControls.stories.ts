@@ -20,15 +20,24 @@ const meta = {
       const pageSize = ref(args.pageSize)
       const currentPage = ref(args.currentPage)
 
-      watch(() => args.mode, value => {
-        mode.value = value
-      })
-      watch(() => args.pageSize, value => {
-        pageSize.value = value
-      })
-      watch(() => args.currentPage, value => {
-        currentPage.value = value
-      })
+      watch(
+        () => args.mode,
+        value => {
+          mode.value = value
+        },
+      )
+      watch(
+        () => args.pageSize,
+        value => {
+          pageSize.value = value
+        },
+      )
+      watch(
+        () => args.currentPage,
+        value => {
+          currentPage.value = value
+        },
+      )
 
       return { args, mode, pageSize, currentPage }
     },
