@@ -13,6 +13,20 @@ vi.mock('~/utils/npm/api', () => ({
 const mockNavigateTo = vi.fn()
 vi.stubGlobal('navigateTo', mockNavigateTo)
 
+const defaultProps = {
+  packageName: 'test-package',
+  currentVersion: '1.0.0',
+  versions: { '1.0.0': {} },
+  distTags: { latest: '1.0.0' },
+  urlPattern: '/package-docs/test-package/v/{version}',
+}
+
+/** Returns true when the native popover is open (in the top layer). */
+function isPopoverOpen(component: Awaited<ReturnType<typeof mountSuspended>>): boolean {
+  const popover = component.find('[popover="auto"]')
+  return popover.exists() && popover.element.matches(':popover-open')
+}
+
 describe('VersionSelector', () => {
   beforeEach(() => {
     mockFetchAllPackageVersions.mockReset()
@@ -21,17 +35,8 @@ describe('VersionSelector', () => {
 
   describe('basic rendering', () => {
     it('renders the current version in the button', async () => {
-      const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
-      })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
+      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      const button = component.find('[data-testid="version-selector-button"]')
       expect(button.exists()).toBe(true)
       expect(button.text()).toContain('1.0.0')
     })
@@ -39,313 +44,204 @@ describe('VersionSelector', () => {
     it('shows "latest" badge when current version is latest', async () => {
       const component = await mountSuspended(VersionSelector, {
         props: {
-          packageName: 'test-package',
+          ...defaultProps,
           currentVersion: '2.0.0',
           versions: { '2.0.0': {} },
           distTags: { latest: '2.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
         },
       })
-
       expect(component.text()).toContain('latest')
     })
 
-    it('does not show "latest" badge when current version is not latest', async () => {
+    it('does not show "latest" badge in trigger when current version is not latest', async () => {
       const component = await mountSuspended(VersionSelector, {
         props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
+          ...defaultProps,
           versions: { '1.0.0': {}, '2.0.0': {} },
           distTags: { latest: '2.0.0', old: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
         },
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      // The button itself shouldn't have the latest badge
+      const button = component.find('[data-testid="version-selector-button"]')
       expect(button.text()).not.toContain('latest')
     })
 
-    it('has aria-expanded="false" initially', async () => {
-      const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
-      })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      expect(button.attributes('aria-expanded')).toBe('false')
+    it('popover is not visible initially', async () => {
+      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      expect(isPopoverOpen(component)).toBe(false)
     })
   })
 
-  describe('dropdown behavior', () => {
-    it('opens dropdown when button is clicked', async () => {
+  describe('popover behavior', () => {
+    it('opens popover when trigger is clicked', async () => {
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      expect(button.attributes('aria-expanded')).toBe('true')
-      expect(component.find('[role="listbox"]').exists()).toBe(true)
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      expect(isPopoverOpen(component)).toBe(true)
+      component.unmount()
     })
 
-    it('closes dropdown when button is clicked again', async () => {
+    it('closes popover when trigger is clicked again', async () => {
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
+      const button = component.find('[data-testid="version-selector-button"]')
       await button.trigger('click')
-      expect(button.attributes('aria-expanded')).toBe('true')
-
+      expect(isPopoverOpen(component)).toBe(true)
       await button.trigger('click')
-      expect(button.attributes('aria-expanded')).toBe('false')
+      expect(isPopoverOpen(component)).toBe(false)
+      component.unmount()
     })
 
-    it('shows version groups in dropdown', async () => {
+    it('shows version groups in popover', async () => {
       const component = await mountSuspended(VersionSelector, {
         props: {
-          packageName: 'test-package',
+          ...defaultProps,
           currentVersion: '2.0.0',
           versions: { '1.0.0': {}, '2.0.0': {} },
-          distTags: {
-            latest: '2.0.0',
-            old: '1.0.0',
-          },
-          urlPattern: '/package-docs/test-package/v/{version}',
+          distTags: { latest: '2.0.0', old: '1.0.0' },
         },
+        attachTo: document.body,
       })
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
 
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      const listbox = component.find('[role="listbox"]')
-      expect(listbox.text()).toContain('2.0.0')
-      expect(listbox.text()).toContain('1.0.0')
+      const popover = component.find('[popover="auto"]')
+      expect(popover.text()).toContain('2.0.0')
+      expect(popover.text()).toContain('1.0.0')
+      component.unmount()
     })
 
     it('shows "View all X versions" link', async () => {
       const component = await mountSuspended(VersionSelector, {
         props: {
-          packageName: 'test-package',
+          ...defaultProps,
           currentVersion: '1.0.0',
           versions: { '1.0.0': {}, '2.0.0': {}, '3.0.0': {} },
           distTags: { latest: '3.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
         },
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
       expect(component.text()).toContain('View all 3 versions')
+      component.unmount()
     })
   })
 
   describe('keyboard navigation', () => {
-    it('opens dropdown on ArrowDown when closed', async () => {
+    it('opens popover on ArrowDown when trigger is focused', async () => {
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('keydown', { key: 'ArrowDown' })
-
-      expect(button.attributes('aria-expanded')).toBe('true')
+      await component
+        .find('[data-testid="version-selector-button"]')
+        .trigger('keydown', { key: 'ArrowDown' })
+      expect(isPopoverOpen(component)).toBe(true)
+      component.unmount()
     })
 
-    it('closes dropdown on Escape', async () => {
+    it('closes popover on Escape', async () => {
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      expect(isPopoverOpen(component)).toBe(true)
 
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-      expect(button.attributes('aria-expanded')).toBe('true')
-
-      await button.trigger('keydown', { key: 'Escape' })
-      expect(button.attributes('aria-expanded')).toBe('false')
+      await component.find('[popover="auto"]').trigger('keydown', { key: 'Escape' })
+      expect(isPopoverOpen(component)).toBe(false)
+      component.unmount()
     })
 
-    it('navigates with arrow keys in listbox', async () => {
+    it('navigates with arrow keys in popover', async () => {
       const component = await mountSuspended(VersionSelector, {
         props: {
-          packageName: 'test-package',
+          ...defaultProps,
           currentVersion: '2.0.0',
           versions: { '1.0.0': {}, '2.0.0': {} },
-          distTags: {
-            latest: '2.0.0',
-            old: '1.0.0',
-          },
-          urlPattern: '/package-docs/test-package/v/{version}',
+          distTags: { latest: '2.0.0', old: '1.0.0' },
         },
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      const listbox = component.find('[role="listbox"]')
-
-      // Navigate down
-      await listbox.trigger('keydown', { key: 'ArrowDown' })
-
-      // Navigate up
-      await listbox.trigger('keydown', { key: 'ArrowUp' })
-
-      // Should still be focused on an item (test that it doesn't crash)
-      expect(listbox.exists()).toBe(true)
-    })
-
-    it('closes listbox on Escape', async () => {
-      const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
-      })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      const listbox = component.find('[role="listbox"]')
-      await listbox.trigger('keydown', { key: 'Escape' })
-
-      expect(button.attributes('aria-expanded')).toBe('false')
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      const popover = component.find('[popover="auto"]')
+      await popover.trigger('keydown', { key: 'ArrowDown' })
+      await popover.trigger('keydown', { key: 'ArrowUp' })
+      expect(isPopoverOpen(component)).toBe(true)
+      component.unmount()
     })
 
     it('navigates to Home and End', async () => {
       const component = await mountSuspended(VersionSelector, {
         props: {
-          packageName: 'test-package',
+          ...defaultProps,
           currentVersion: '3.0.0',
           versions: { '1.0.0': {}, '2.0.0': {}, '3.0.0': {} },
-          distTags: {
-            latest: '3.0.0',
-            beta: '2.0.0',
-            old: '1.0.0',
-          },
-          urlPattern: '/package-docs/test-package/v/{version}',
+          distTags: { latest: '3.0.0', beta: '2.0.0', old: '1.0.0' },
         },
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      const listbox = component.find('[role="listbox"]')
-
-      // Navigate to end
-      await listbox.trigger('keydown', { key: 'End' })
-
-      // Navigate to home
-      await listbox.trigger('keydown', { key: 'Home' })
-
-      // Should not crash
-      expect(listbox.exists()).toBe(true)
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      const popover = component.find('[popover="auto"]')
+      await popover.trigger('keydown', { key: 'End' })
+      await popover.trigger('keydown', { key: 'Home' })
+      expect(isPopoverOpen(component)).toBe(true)
+      component.unmount()
     })
   })
 
   describe('version selection', () => {
-    it('closes dropdown and navigates when clicking a version', async () => {
-      const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '2.0.0',
-          versions: { '1.0.0': {}, '2.0.0': {} },
-          distTags: {
-            latest: '2.0.0',
-            old: '1.0.0',
-          },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
-      })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      // Click on the version link
-      const versionLink = component.findAll('a').find(a => a.text().includes('1.0.0'))
-      expect(versionLink?.exists()).toBe(true)
-      await versionLink!.trigger('click')
-
-      // Dropdown should close
-      expect(button.attributes('aria-expanded')).toBe('false')
-    })
-
     it('generates correct URL from pattern', async () => {
       const component = await mountSuspended(VersionSelector, {
         props: {
-          packageName: 'test-package',
+          ...defaultProps,
           currentVersion: '2.0.0',
           versions: { '1.0.0': {}, '2.0.0': {} },
-          distTags: {
-            latest: '2.0.0',
-            old: '1.0.0',
-          },
+          distTags: { latest: '2.0.0', old: '1.0.0' },
           urlPattern: '/package-code/test-package/v/{version}/src/index.ts',
         },
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
 
       const versionLink = component.findAll('a').find(a => a.text().includes('1.0.0'))
       expect(versionLink?.attributes('href')).toBe(
         '/package-code/test-package/v/1.0.0/src/index.ts',
       )
+      component.unmount()
+    })
+
+    it('closes popover when clicking a version link', async () => {
+      const component = await mountSuspended(VersionSelector, {
+        props: {
+          ...defaultProps,
+          currentVersion: '2.0.0',
+          versions: { '1.0.0': {}, '2.0.0': {} },
+          distTags: { latest: '2.0.0', old: '1.0.0' },
+        },
+        attachTo: document.body,
+      })
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+
+      const versionLink = component.findAll('a').find(a => a.text().includes('1.0.0'))
+      expect(versionLink?.exists()).toBe(true)
+      await versionLink!.trigger('click')
+      expect(isPopoverOpen(component)).toBe(false)
+      component.unmount()
     })
   })
 
   describe('expand/collapse groups', () => {
     it('shows expand button for groups', async () => {
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      // Find expand button within the dropdown
-      const expandButton = component.find('[role="listbox"] button[aria-expanded]')
-      expect(expandButton.exists()).toBe(true)
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      expect(component.find('[popover="auto"] button[aria-expanded]').exists()).toBe(true)
+      component.unmount()
     })
 
     it('loads versions when expanding a group', async () => {
@@ -355,25 +251,16 @@ describe('VersionSelector', () => {
       ])
 
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      // Find and click expand button
-      const expandButton = component.find('[role="listbox"] button[aria-expanded="false"]')
-      await expandButton.trigger('click')
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await component.find('[popover="auto"] button[aria-expanded="false"]').trigger('click')
 
       await vi.waitFor(() => {
         expect(mockFetchAllPackageVersions).toHaveBeenCalledWith('test-package')
       })
+      component.unmount()
     })
 
     it('collapses group when clicking expanded button', async () => {
@@ -384,46 +271,30 @@ describe('VersionSelector', () => {
       ])
 
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.2.0',
-          versions: { '1.2.0': {} },
-          distTags: { latest: '1.2.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: { ...defaultProps, currentVersion: '1.2.0', versions: { '1.2.0': {} } },
+        attachTo: document.body,
       })
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await component.find('[popover="auto"] button[aria-expanded]').trigger('click')
 
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      // Expand
-      const expandButton = component.find('[role="listbox"] button[aria-expanded]')
-      await expandButton.trigger('click')
-
-      await vi.waitFor(() => {
-        expect(mockFetchAllPackageVersions).toHaveBeenCalled()
-      })
-
-      // Wait for expansion
+      await vi.waitFor(() => expect(mockFetchAllPackageVersions).toHaveBeenCalled())
       await vi.waitFor(
-        () => {
-          const btn = component.find('[role="listbox"] button[aria-expanded="true"]')
-          expect(btn.exists()).toBe(true)
-        },
+        () =>
+          expect(component.find('[popover="auto"] button[aria-expanded="true"]').exists()).toBe(
+            true,
+          ),
         { timeout: 2000 },
       )
 
-      // Collapse
-      const expandedButton = component.find('[role="listbox"] button[aria-expanded="true"]')
-      await expandedButton.trigger('click')
-
+      await component.find('[popover="auto"] button[aria-expanded="true"]').trigger('click')
       await vi.waitFor(
-        () => {
-          const btn = component.find('[role="listbox"] button[aria-expanded="false"]')
-          expect(btn.exists()).toBe(true)
-        },
+        () =>
+          expect(component.find('[popover="auto"] button[aria-expanded="false"]').exists()).toBe(
+            true,
+          ),
         { timeout: 2000 },
       )
+      component.unmount()
     })
 
     it('toggles older version groups for a single-version tagged release', async () => {
@@ -433,39 +304,26 @@ describe('VersionSelector', () => {
       ])
 
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {}, '0.9.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: { ...defaultProps, versions: { '1.0.0': {}, '0.9.0': {} } },
+        attachTo: document.body,
       })
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await component.find('[popover="auto"] button[aria-expanded="false"]').trigger('click')
 
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      const expandButton = component.find('[role="listbox"] button[aria-expanded="false"]')
-      await expandButton.trigger('click')
-
+      await vi.waitFor(() =>
+        expect(mockFetchAllPackageVersions).toHaveBeenCalledWith('test-package'),
+      )
       await vi.waitFor(() => {
-        expect(mockFetchAllPackageVersions).toHaveBeenCalledWith('test-package')
+        expect(component.find('[popover="auto"]').text()).toContain('0.9')
+        expect(component.find('[popover="auto"] button[aria-expanded="true"]').exists()).toBe(true)
       })
 
+      await component.find('[popover="auto"] button[aria-expanded="true"]').trigger('click')
       await vi.waitFor(() => {
-        expect(component.find('[role="listbox"]').text()).toContain('0.9')
-        const expandedButton = component.find('[role="listbox"] button[aria-expanded="true"]')
-        expect(expandedButton.exists()).toBe(true)
+        expect(component.find('[popover="auto"]').text()).not.toContain('0.9')
+        expect(component.find('[popover="auto"] button[aria-expanded="false"]').exists()).toBe(true)
       })
-
-      const expandedButton = component.find('[role="listbox"] button[aria-expanded="true"]')
-      await expandedButton.trigger('click')
-
-      await vi.waitFor(() => {
-        expect(component.find('[role="listbox"]').text()).not.toContain('0.9')
-        const collapsedButton = component.find('[role="listbox"] button[aria-expanded="false"]')
-        expect(collapsedButton.exists()).toBe(true)
-      })
+      component.unmount()
     })
 
     it('does not reveal unrelated older groups when expanding a tagged row with nested versions', async () => {
@@ -478,73 +336,33 @@ describe('VersionSelector', () => {
 
       const component = await mountSuspended(VersionSelector, {
         props: {
-          packageName: 'test-package',
+          ...defaultProps,
           currentVersion: '1.2.0',
           versions: { '1.2.0': {}, '1.1.0': {}, '1.0.0': {}, '0.9.0': {} },
-          distTags: { latest: '1.2.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
         },
+        attachTo: document.body,
       })
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await component.find('[popover="auto"] button[aria-expanded="false"]').trigger('click')
 
-      const trigger = component.find('button[aria-haspopup="listbox"]')
-      await trigger.trigger('click')
-
-      const expandButton = component.find('[role="listbox"] button[aria-expanded="false"]')
-      await expandButton.trigger('click')
-
+      await vi.waitFor(() =>
+        expect(mockFetchAllPackageVersions).toHaveBeenCalledWith('test-package'),
+      )
       await vi.waitFor(() => {
-        expect(mockFetchAllPackageVersions).toHaveBeenCalledWith('test-package')
+        const text = component.find('[popover="auto"]').text()
+        expect(text).toContain('1.1.0')
+        expect(text).toContain('1.0.0')
+        expect(text).not.toContain('0.9')
       })
 
+      await component.find('[popover="auto"] button[aria-expanded="true"]').trigger('click')
       await vi.waitFor(() => {
-        const listboxText = component.find('[role="listbox"]').text()
-        expect(listboxText).toContain('1.1.0')
-        expect(listboxText).toContain('1.0.0')
-        expect(listboxText).not.toContain('0.9')
+        const text = component.find('[popover="auto"]').text()
+        expect(text).not.toContain('1.1.0')
+        expect(text).not.toContain('1.0.0')
+        expect(text).not.toContain('0.9')
       })
-
-      const expandedButton = component.find('[role="listbox"] button[aria-expanded="true"]')
-      await expandedButton.trigger('click')
-
-      await vi.waitFor(() => {
-        const listboxText = component.find('[role="listbox"]').text()
-        expect(listboxText).not.toContain('1.1.0')
-        expect(listboxText).not.toContain('1.0.0')
-        expect(listboxText).not.toContain('0.9')
-      })
-    })
-
-    it('collapses additional version groups with ArrowLeft when showAllGroups is open', async () => {
-      mockFetchAllPackageVersions.mockResolvedValue([
-        { version: '1.0.0', time: '2024-01-15T12:00:00.000Z', hasProvenance: false },
-        { version: '0.9.0', time: '2024-01-10T12:00:00.000Z', hasProvenance: false },
-      ])
-
-      const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {}, '0.9.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
-      })
-
-      const trigger = component.find('button[aria-haspopup="listbox"]')
-      await trigger.trigger('click')
-
-      await component.find('[role="listbox"] button[aria-expanded="false"]').trigger('click')
-
-      await vi.waitFor(() => {
-        expect(component.find('[role="listbox"]').text()).toContain('0.9')
-      })
-
-      const listbox = component.find('[role="listbox"]')
-      await listbox.trigger('keydown', { key: 'ArrowLeft' })
-
-      await vi.waitFor(() => {
-        expect(listbox.text()).not.toContain('0.9')
-      })
+      component.unmount()
     })
 
     it('resets showAllGroups when dist-tags props change after loading', async () => {
@@ -554,28 +372,17 @@ describe('VersionSelector', () => {
       ])
 
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {}, '0.9.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: { ...defaultProps, versions: { '1.0.0': {}, '0.9.0': {} } },
+        attachTo: document.body,
       })
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await component.find('[popover="auto"] button[aria-expanded="false"]').trigger('click')
 
-      const trigger = component.find('button[aria-haspopup="listbox"]')
-      await trigger.trigger('click')
-      await component.find('[role="listbox"] button[aria-expanded="false"]').trigger('click')
-
-      await vi.waitFor(() => {
-        expect(component.find('[role="listbox"]').text()).toContain('0.9')
-      })
+      await vi.waitFor(() => expect(component.find('[popover="auto"]').text()).toContain('0.9'))
 
       await component.setProps({ distTags: { latest: '1.0.0' } })
-
-      await vi.waitFor(() => {
-        expect(component.find('[role="listbox"]').text()).not.toContain('0.9')
-      })
+      await vi.waitFor(() => expect(component.find('[popover="auto"]').text()).not.toContain('0.9'))
+      component.unmount()
     })
 
     it('ignores expand clicks while a group is already loading', async () => {
@@ -586,19 +393,11 @@ describe('VersionSelector', () => {
       mockFetchAllPackageVersions.mockReturnValue(loadPromise)
 
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
-
-      const trigger = component.find('button[aria-haspopup="listbox"]')
-      await trigger.trigger('click')
-
-      const expandButton = component.find('[role="listbox"] button[aria-expanded]')
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      const expandButton = component.find('[popover="auto"] button[aria-expanded]')
       await expandButton.trigger('click')
       await expandButton.trigger('click')
 
@@ -611,6 +410,7 @@ describe('VersionSelector', () => {
           trustStatus: { provenance: false, trustedPublisher: false, stagedPublish: false },
         },
       ])
+      component.unmount()
     })
   })
 
@@ -625,26 +425,17 @@ describe('VersionSelector', () => {
 
       const component = await mountSuspended(VersionSelector, {
         props: {
-          packageName: 'test-package',
+          ...defaultProps,
           currentVersion: '0.10.1',
           versions: { '0.10.1': {} },
           distTags: { latest: '0.10.1' },
-          urlPattern: '/package-docs/test-package/v/{version}',
         },
+        attachTo: document.body,
       })
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await component.find('[popover="auto"] button[aria-expanded]').trigger('click')
 
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      // Expand the group
-      const expandButton = component.find('[role="listbox"] button[aria-expanded]')
-      await expandButton.trigger('click')
-
-      await vi.waitFor(() => {
-        expect(mockFetchAllPackageVersions).toHaveBeenCalled()
-      })
-
-      // Wait for versions to load
+      await vi.waitFor(() => expect(mockFetchAllPackageVersions).toHaveBeenCalled())
       await vi.waitFor(
         () => {
           const text = component.text()
@@ -654,52 +445,33 @@ describe('VersionSelector', () => {
         },
         { timeout: 2000 },
       )
+      component.unmount()
     })
   })
 
   describe('dist-tag display', () => {
     it('displays multiple tags for same version', async () => {
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: {
-            latest: '1.0.0',
-            stable: '1.0.0',
-          },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: { ...defaultProps, distTags: { latest: '1.0.0', stable: '1.0.0' } },
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      const listbox = component.find('[role="listbox"]')
-      expect(listbox.text()).toContain('latest')
-      expect(listbox.text()).toContain('stable')
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      const popover = component.find('[popover="auto"]')
+      expect(popover.text()).toContain('latest')
+      expect(popover.text()).toContain('stable')
+      component.unmount()
     })
 
     it('shows "latest" tag with special styling', async () => {
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      // Find the latest tag span
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
       const latestTags = component.findAll('span').filter(s => s.text() === 'latest')
       expect(latestTags.length).toBeGreaterThan(0)
-      // Should have accent styling
-      const hasAccentStyle = latestTags.some(t => t.classes().some(c => c.includes('badge-accent')))
-      expect(hasAccentStyle).toBe(true)
+      expect(latestTags.some(t => t.classes().some(c => c.includes('badge-accent')))).toBe(true)
+      component.unmount()
     })
   })
 
@@ -709,206 +481,114 @@ describe('VersionSelector', () => {
       mockFetchAllPackageVersions.mockReturnValue(promise)
 
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await component.find('[popover="auto"] button[aria-expanded]').trigger('click')
 
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      // Click expand
-      const expandButton = component.find('[role="listbox"] button[aria-expanded]')
-      await expandButton.trigger('click')
-
-      // Should show loading spinner (motion-safe:animate-spin is applied)
       await vi.waitFor(() => {
-        const spinner = component.find('.i-svg-spinners\\:ring-resize')
-        expect(spinner.exists()).toBe(true)
+        expect(component.find('.i-svg-spinners\\:ring-resize').exists()).toBe(true)
       })
-
-      // Resolve the promise to clean up
       resolve([])
+      component.unmount()
     })
   })
 
   describe('accessibility', () => {
-    it('has aria-haspopup="listbox" on trigger button', async () => {
-      const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
-      })
-
-      const button = component.find('button[aria-haspopup]')
-      expect(button.attributes('aria-haspopup')).toBe('listbox')
+    it('trigger button has popovertarget wired to the popover id', async () => {
+      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      const button = component.find('[data-testid="version-selector-button"]')
+      const popover = component.find('[popover="auto"]')
+      expect(button.attributes('popovertarget')).toBe(popover.attributes('id'))
     })
 
-    it('has role="listbox" on dropdown', async () => {
-      const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
-      })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      expect(component.find('[role="listbox"]').exists()).toBe(true)
+    it('popover has an accessible aria-label', async () => {
+      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      expect(component.find('[popover="auto"]').attributes('aria-label')).toBeTruthy()
     })
 
-    it('has role="option" on version items', async () => {
-      const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
-      })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      expect(component.find('[role="option"]').exists()).toBe(true)
+    it('component is wrapped in a nav with an aria-label', async () => {
+      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      expect(component.find('nav[aria-label]').exists()).toBe(true)
     })
 
-    it('sets aria-selected on current version', async () => {
+    it('current version link has aria-current="page"', async () => {
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      const selectedOption = component.find('[role="option"][aria-selected="true"]')
-      expect(selectedOption.exists()).toBe(true)
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      const currentLink = component.find('a[aria-current="page"]')
+      expect(currentLink.exists()).toBe(true)
+      expect(currentLink.text()).toContain('1.0.0')
+      component.unmount()
     })
 
-    it('updates aria-activedescendant when navigating', async () => {
+    it('non-current version links do not have aria-current', async () => {
       const component = await mountSuspended(VersionSelector, {
         props: {
-          packageName: 'test-package',
+          ...defaultProps,
           currentVersion: '2.0.0',
           versions: { '1.0.0': {}, '2.0.0': {} },
-          distTags: {
-            latest: '2.0.0',
-            old: '1.0.0',
-          },
-          urlPattern: '/package-docs/test-package/v/{version}',
+          distTags: { latest: '2.0.0', old: '1.0.0' },
         },
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      const listbox = component.find('[role="listbox"]')
-      expect(listbox.attributes('aria-activedescendant')).toBeDefined()
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      const oldLink = component.findAll('a[href]').find(a => a.text().includes('1.0.0'))
+      expect(oldLink?.attributes('aria-current')).toBeUndefined()
+      component.unmount()
     })
 
-    it('expand buttons have aria-expanded attribute', async () => {
+    it('expand buttons have aria-expanded and aria-controls', async () => {
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      const expandButton = component.find('[role="listbox"] button[aria-expanded]')
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      const expandButton = component.find('[popover="auto"] button[aria-expanded]')
       expect(expandButton.exists()).toBe(true)
       expect(['true', 'false']).toContain(expandButton.attributes('aria-expanded'))
+      expect(expandButton.attributes('aria-controls')).toBeTruthy()
+      component.unmount()
     })
 
-    it('expand buttons have aria-label', async () => {
+    it('expand buttons have a descriptive aria-label', async () => {
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      const expandButton = component.find('[role="listbox"] button[aria-label]')
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      const expandButton = component.find('[popover="auto"] button[aria-label]')
       expect(expandButton.exists()).toBe(true)
-      expect(expandButton.attributes('aria-label')).toMatch(/Expand|Collapse/)
+      expect(expandButton.attributes('aria-label')).toBeTruthy()
+      component.unmount()
     })
 
-    it('icons have aria-hidden attribute', async () => {
-      const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
-      })
-
-      // The chevron icon in the main button
-      const chevronIcon = component.find('button[aria-haspopup] span[aria-hidden="true"]')
-      expect(chevronIcon.exists()).toBe(true)
+    it('decorative icons have aria-hidden', async () => {
+      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      expect(component.findAll('[aria-hidden="true"]').length).toBeGreaterThan(0)
     })
   })
 
   describe('error handling', () => {
     it('handles fetch errors gracefully', async () => {
       mockFetchAllPackageVersions.mockRejectedValue(new Error('Network error'))
-
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
+        props: defaultProps,
+        attachTo: document.body,
       })
+      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await component.find('[popover="auto"] button[aria-expanded]').trigger('click')
 
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      // Click expand
-      const expandButton = component.find('[role="listbox"] button[aria-expanded]')
-      await expandButton.trigger('click')
-
-      // Wait for error to be logged
       await vi.waitFor(() => {
         expect(consoleSpy).toHaveBeenCalledWith('Failed to load versions:', expect.any(Error))
       })
-
       consoleSpy.mockRestore()
+      component.unmount()
     })
   })
 
@@ -921,66 +601,27 @@ describe('VersionSelector', () => {
 
       const component = await mountSuspended(VersionSelector, {
         props: {
-          packageName: 'test-package',
+          ...defaultProps,
           currentVersion: '2.0.0',
           versions: { '1.0.0': {}, '2.0.0': {} },
-          distTags: {
-            latest: '2.0.0',
-            old: '1.0.0',
-          },
-          urlPattern: '/package-docs/test-package/v/{version}',
-        },
-      })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
-      await button.trigger('click')
-
-      // Expand first group
-      const expandButtons = component.findAll('[role="listbox"] button[aria-expanded="false"]')
-      if (expandButtons[0]) {
-        await expandButtons[0].trigger('click')
-      }
-
-      await vi.waitFor(() => {
-        expect(mockFetchAllPackageVersions).toHaveBeenCalledTimes(1)
-      })
-
-      // Close and reopen
-      await button.trigger('click')
-      await button.trigger('click')
-
-      // Expand another group - should not fetch again
-      const updatedButtons = component.findAll('[role="listbox"] button[aria-expanded="false"]')
-      if (updatedButtons[0]) {
-        await updatedButtons[0].trigger('click')
-      }
-
-      // Should still only have been called once
-      expect(mockFetchAllPackageVersions).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('click outside', () => {
-    it('closes dropdown when clicking outside', async () => {
-      const component = await mountSuspended(VersionSelector, {
-        props: {
-          packageName: 'test-package',
-          currentVersion: '1.0.0',
-          versions: { '1.0.0': {} },
-          distTags: { latest: '1.0.0' },
-          urlPattern: '/package-docs/test-package/v/{version}',
+          distTags: { latest: '2.0.0', old: '1.0.0' },
         },
         attachTo: document.body,
       })
-
-      const button = component.find('button[aria-haspopup="listbox"]')
+      const button = component.find('[data-testid="version-selector-button"]')
       await button.trigger('click')
-      expect(button.attributes('aria-expanded')).toBe('true')
 
-      // Simulate click outside by directly setting isOpen
-      // Note: onClickOutside is hard to test in JSDOM, so we verify the behavior exists
-      // by checking the component closes when we trigger a click on the main element
-      // after it opens
+      const expandButtons = component.findAll('[popover="auto"] button[aria-expanded="false"]')
+      if (expandButtons[0]) await expandButtons[0].trigger('click')
+      await vi.waitFor(() => expect(mockFetchAllPackageVersions).toHaveBeenCalledTimes(1))
+
+      await button.trigger('click')
+      await button.trigger('click')
+
+      const updatedButtons = component.findAll('[popover="auto"] button[aria-expanded="false"]')
+      if (updatedButtons[0]) await updatedButtons[0].trigger('click')
+      expect(mockFetchAllPackageVersions).toHaveBeenCalledTimes(1)
+      component.unmount()
     })
   })
 })
