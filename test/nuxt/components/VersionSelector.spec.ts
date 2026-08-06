@@ -1,5 +1,4 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { userEvent } from '@vitest/browser/context'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import type { PackageVersionInfo } from '#shared/types/npm-registry'
 import VersionSelector from '~/components/VersionSelector.vue'
@@ -53,7 +52,9 @@ describe('VersionSelector', () => {
 
   describe('basic rendering', () => {
     it('renders the current version in the button', async () => {
-      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      const component = await mountSuspended(VersionSelector, {
+        props: defaultProps,
+      })
       const button = getTrigger(component)
       expect(button.exists()).toBe(true)
       expect(button.text()).toContain('1.0.0')
@@ -84,7 +85,9 @@ describe('VersionSelector', () => {
     })
 
     it('popover is not visible initially', async () => {
-      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      const component = await mountSuspended(VersionSelector, {
+        props: defaultProps,
+      })
       expect(isPopoverOpen(component)).toBe(false)
     })
   })
@@ -264,8 +267,16 @@ describe('VersionSelector', () => {
 
     it('loads versions when expanding a group', async () => {
       mockFetchAllPackageVersions.mockResolvedValue([
-        { version: '1.0.0', time: '2024-01-15T12:00:00.000Z', hasProvenance: false },
-        { version: '0.9.0', time: '2024-01-10T12:00:00.000Z', hasProvenance: false },
+        {
+          version: '1.0.0',
+          time: '2024-01-15T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '0.9.0',
+          time: '2024-01-10T12:00:00.000Z',
+          hasProvenance: false,
+        },
       ])
 
       const component = await mountSuspended(VersionSelector, {
@@ -283,13 +294,29 @@ describe('VersionSelector', () => {
 
     it('collapses group when clicking expanded button', async () => {
       mockFetchAllPackageVersions.mockResolvedValue([
-        { version: '1.2.0', time: '2024-01-15T12:00:00.000Z', hasProvenance: false },
-        { version: '1.1.0', time: '2024-01-12T12:00:00.000Z', hasProvenance: false },
-        { version: '1.0.0', time: '2024-01-10T12:00:00.000Z', hasProvenance: false },
+        {
+          version: '1.2.0',
+          time: '2024-01-15T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '1.1.0',
+          time: '2024-01-12T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '1.0.0',
+          time: '2024-01-10T12:00:00.000Z',
+          hasProvenance: false,
+        },
       ])
 
       const component = await mountSuspended(VersionSelector, {
-        props: { ...defaultProps, currentVersion: '1.2.0', versions: { '1.2.0': {} } },
+        props: {
+          ...defaultProps,
+          currentVersion: '1.2.0',
+          versions: { '1.2.0': {} },
+        },
         attachTo: document.body,
       })
       await openPopover(component)
@@ -313,8 +340,16 @@ describe('VersionSelector', () => {
 
     it('toggles older version groups for a single-version tagged release', async () => {
       mockFetchAllPackageVersions.mockResolvedValue([
-        { version: '1.0.0', time: '2024-01-15T12:00:00.000Z', hasProvenance: false },
-        { version: '0.9.0', time: '2024-01-10T12:00:00.000Z', hasProvenance: false },
+        {
+          version: '1.0.0',
+          time: '2024-01-15T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '0.9.0',
+          time: '2024-01-10T12:00:00.000Z',
+          hasProvenance: false,
+        },
       ])
 
       const component = await mountSuspended(VersionSelector, {
@@ -342,10 +377,26 @@ describe('VersionSelector', () => {
 
     it('does not reveal unrelated older groups when expanding a tagged row with nested versions', async () => {
       mockFetchAllPackageVersions.mockResolvedValue([
-        { version: '1.2.0', time: '2024-01-15T12:00:00.000Z', hasProvenance: false },
-        { version: '1.1.0', time: '2024-01-12T12:00:00.000Z', hasProvenance: false },
-        { version: '1.0.0', time: '2024-01-10T12:00:00.000Z', hasProvenance: false },
-        { version: '0.9.0', time: '2024-01-08T12:00:00.000Z', hasProvenance: false },
+        {
+          version: '1.2.0',
+          time: '2024-01-15T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '1.1.0',
+          time: '2024-01-12T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '1.0.0',
+          time: '2024-01-10T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '0.9.0',
+          time: '2024-01-08T12:00:00.000Z',
+          hasProvenance: false,
+        },
       ])
 
       const component = await mountSuspended(VersionSelector, {
@@ -382,8 +433,16 @@ describe('VersionSelector', () => {
 
     it('resets showAllGroups when dist-tags props change after loading', async () => {
       mockFetchAllPackageVersions.mockResolvedValue([
-        { version: '1.0.0', time: '2024-01-15T12:00:00.000Z', hasProvenance: false },
-        { version: '0.9.0', time: '2024-01-10T12:00:00.000Z', hasProvenance: false },
+        {
+          version: '1.0.0',
+          time: '2024-01-15T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '0.9.0',
+          time: '2024-01-10T12:00:00.000Z',
+          hasProvenance: false,
+        },
       ])
 
       const component = await mountSuspended(VersionSelector, {
@@ -422,7 +481,11 @@ describe('VersionSelector', () => {
         {
           version: '1.0.0',
           time: '2024-01-15T12:00:00.000Z',
-          trustStatus: { provenance: false, trustedPublisher: false, stagedPublish: false },
+          trustStatus: {
+            provenance: false,
+            trustedPublisher: false,
+            stagedPublish: false,
+          },
         },
       ])
       component.unmount()
@@ -432,10 +495,26 @@ describe('VersionSelector', () => {
   describe('0.x version grouping', () => {
     it('groups 0.x versions by minor version, not major', async () => {
       mockFetchAllPackageVersions.mockResolvedValue([
-        { version: '0.10.0', time: '2024-01-15T12:00:00.000Z', hasProvenance: false },
-        { version: '0.10.1', time: '2024-01-16T12:00:00.000Z', hasProvenance: false },
-        { version: '0.9.0', time: '2024-01-10T12:00:00.000Z', hasProvenance: false },
-        { version: '0.9.3', time: '2024-01-12T12:00:00.000Z', hasProvenance: false },
+        {
+          version: '0.10.0',
+          time: '2024-01-15T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '0.10.1',
+          time: '2024-01-16T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '0.9.0',
+          time: '2024-01-10T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '0.9.3',
+          time: '2024-01-12T12:00:00.000Z',
+          hasProvenance: false,
+        },
       ])
 
       const component = await mountSuspended(VersionSelector, {
@@ -467,7 +546,10 @@ describe('VersionSelector', () => {
   describe('dist-tag display', () => {
     it('displays multiple tags for same version', async () => {
       const component = await mountSuspended(VersionSelector, {
-        props: { ...defaultProps, distTags: { latest: '1.0.0', stable: '1.0.0' } },
+        props: {
+          ...defaultProps,
+          distTags: { latest: '1.0.0', stable: '1.0.0' },
+        },
         attachTo: document.body,
       })
       await openPopover(component)
@@ -512,19 +594,25 @@ describe('VersionSelector', () => {
 
   describe('accessibility', () => {
     it('trigger button has popovertarget wired to the popover id', async () => {
-      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      const component = await mountSuspended(VersionSelector, {
+        props: defaultProps,
+      })
       const button = getTrigger(component)
       const popover = getPopover(component)
       expect(button.attributes('popovertarget')).toBe(popover.attributes('id'))
     })
 
     it('popover has an accessible aria-label', async () => {
-      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      const component = await mountSuspended(VersionSelector, {
+        props: defaultProps,
+      })
       expect(getPopover(component).attributes('aria-label')).toBeTruthy()
     })
 
     it('component is wrapped in a nav with an aria-label', async () => {
-      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      const component = await mountSuspended(VersionSelector, {
+        props: defaultProps,
+      })
       expect(component.find('nav[aria-label]').exists()).toBe(true)
     })
 
@@ -582,7 +670,9 @@ describe('VersionSelector', () => {
     })
 
     it('decorative icons have aria-hidden', async () => {
-      const component = await mountSuspended(VersionSelector, { props: defaultProps })
+      const component = await mountSuspended(VersionSelector, {
+        props: defaultProps,
+      })
       expect(component.findAll('[aria-hidden="true"]').length).toBeGreaterThan(0)
     })
   })
@@ -610,8 +700,16 @@ describe('VersionSelector', () => {
   describe('caching behavior', () => {
     it('only fetches versions once when expanding multiple groups', async () => {
       mockFetchAllPackageVersions.mockResolvedValue([
-        { version: '2.0.0', time: '2024-01-15T12:00:00.000Z', hasProvenance: false },
-        { version: '1.0.0', time: '2024-01-10T12:00:00.000Z', hasProvenance: false },
+        {
+          version: '2.0.0',
+          time: '2024-01-15T12:00:00.000Z',
+          hasProvenance: false,
+        },
+        {
+          version: '1.0.0',
+          time: '2024-01-10T12:00:00.000Z',
+          hasProvenance: false,
+        },
       ])
 
       const component = await mountSuspended(VersionSelector, {
