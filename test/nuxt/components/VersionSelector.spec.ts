@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { userEvent } from '@vitest/browser/context'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import type { PackageVersionInfo } from '#shared/types/npm-registry'
 import VersionSelector from '~/components/VersionSelector.vue'
@@ -21,9 +22,26 @@ const defaultProps = {
   urlPattern: '/package-docs/test-package/v/{version}',
 }
 
+type VersionSelectorWrapper = Awaited<ReturnType<typeof mountSuspended>>
+
+/** The trigger button that toggles the version popover. */
+function getTrigger(component: VersionSelectorWrapper) {
+  return component.find('[data-testid="version-selector-button"]')
+}
+
+/** The native popover element that holds the version groups. */
+function getPopover(component: VersionSelectorWrapper) {
+  return component.find('[popover="auto"]')
+}
+
+/** Open the popover by activating its trigger. */
+function openPopover(component: VersionSelectorWrapper) {
+  return getTrigger(component).trigger('click')
+}
+
 /** Returns true when the native popover is open (in the top layer). */
-function isPopoverOpen(component: Awaited<ReturnType<typeof mountSuspended>>): boolean {
-  const popover = component.find('[popover="auto"]')
+function isPopoverOpen(component: VersionSelectorWrapper): boolean {
+  const popover = getPopover(component)
   return popover.exists() && popover.element.matches(':popover-open')
 }
 
@@ -36,7 +54,7 @@ describe('VersionSelector', () => {
   describe('basic rendering', () => {
     it('renders the current version in the button', async () => {
       const component = await mountSuspended(VersionSelector, { props: defaultProps })
-      const button = component.find('[data-testid="version-selector-button"]')
+      const button = getTrigger(component)
       expect(button.exists()).toBe(true)
       expect(button.text()).toContain('1.0.0')
     })
@@ -61,7 +79,7 @@ describe('VersionSelector', () => {
           distTags: { latest: '2.0.0', old: '1.0.0' },
         },
       })
-      const button = component.find('[data-testid="version-selector-button"]')
+      const button = getTrigger(component)
       expect(button.text()).not.toContain('latest')
     })
 
@@ -77,7 +95,7 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await openPopover(component)
       expect(isPopoverOpen(component)).toBe(true)
       component.unmount()
     })
@@ -87,7 +105,7 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      const button = component.find('[data-testid="version-selector-button"]')
+      const button = getTrigger(component)
       await button.trigger('click')
       expect(isPopoverOpen(component)).toBe(true)
       await button.trigger('click')
@@ -105,9 +123,9 @@ describe('VersionSelector', () => {
         },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await openPopover(component)
 
-      const popover = component.find('[popover="auto"]')
+      const popover = getPopover(component)
       expect(popover.text()).toContain('2.0.0')
       expect(popover.text()).toContain('1.0.0')
       component.unmount()
@@ -123,7 +141,7 @@ describe('VersionSelector', () => {
         },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await openPopover(component)
       expect(component.text()).toContain('View all 3 versions')
       component.unmount()
     })
@@ -135,9 +153,7 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component
-        .find('[data-testid="version-selector-button"]')
-        .trigger('keydown', { key: 'ArrowDown' })
+      await getTrigger(component).trigger('keydown', { key: 'ArrowDown' })
       expect(isPopoverOpen(component)).toBe(true)
       component.unmount()
     })
@@ -147,11 +163,13 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await openPopover(component)
       expect(isPopoverOpen(component)).toBe(true)
 
-      await component.find('[popover="auto"]').trigger('keydown', { key: 'Escape' })
-      expect(isPopoverOpen(component)).toBe(false)
+      // A real (trusted) Escape triggers the browser's native popover
+      // light-dismiss; a synthetic keydown event would not.
+      await userEvent.keyboard('{Escape}')
+      await vi.waitFor(() => expect(isPopoverOpen(component)).toBe(false))
       component.unmount()
     })
 
@@ -165,8 +183,8 @@ describe('VersionSelector', () => {
         },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      const popover = component.find('[popover="auto"]')
+      await openPopover(component)
+      const popover = getPopover(component)
       await popover.trigger('keydown', { key: 'ArrowDown' })
       await popover.trigger('keydown', { key: 'ArrowUp' })
       expect(isPopoverOpen(component)).toBe(true)
@@ -183,8 +201,8 @@ describe('VersionSelector', () => {
         },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      const popover = component.find('[popover="auto"]')
+      await openPopover(component)
+      const popover = getPopover(component)
       await popover.trigger('keydown', { key: 'End' })
       await popover.trigger('keydown', { key: 'Home' })
       expect(isPopoverOpen(component)).toBe(true)
@@ -204,7 +222,7 @@ describe('VersionSelector', () => {
         },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await openPopover(component)
 
       const versionLink = component.findAll('a').find(a => a.text().includes('1.0.0'))
       expect(versionLink?.attributes('href')).toBe(
@@ -223,7 +241,7 @@ describe('VersionSelector', () => {
         },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await openPopover(component)
 
       const versionLink = component.findAll('a').find(a => a.text().includes('1.0.0'))
       expect(versionLink?.exists()).toBe(true)
@@ -239,8 +257,8 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      expect(component.find('[popover="auto"] button[aria-expanded]').exists()).toBe(true)
+      await openPopover(component)
+      expect(getPopover(component).find('button[aria-expanded]').exists()).toBe(true)
       component.unmount()
     })
 
@@ -254,8 +272,8 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      await component.find('[popover="auto"] button[aria-expanded="false"]').trigger('click')
+      await openPopover(component)
+      await getPopover(component).find('button[aria-expanded="false"]').trigger('click')
 
       await vi.waitFor(() => {
         expect(mockFetchAllPackageVersions).toHaveBeenCalledWith('test-package')
@@ -274,24 +292,20 @@ describe('VersionSelector', () => {
         props: { ...defaultProps, currentVersion: '1.2.0', versions: { '1.2.0': {} } },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      await component.find('[popover="auto"] button[aria-expanded]').trigger('click')
+      await openPopover(component)
+      await getPopover(component).find('button[aria-expanded]').trigger('click')
 
       await vi.waitFor(() => expect(mockFetchAllPackageVersions).toHaveBeenCalled())
       await vi.waitFor(
         () =>
-          expect(component.find('[popover="auto"] button[aria-expanded="true"]').exists()).toBe(
-            true,
-          ),
+          expect(getPopover(component).find('button[aria-expanded="true"]').exists()).toBe(true),
         { timeout: 2000 },
       )
 
-      await component.find('[popover="auto"] button[aria-expanded="true"]').trigger('click')
+      await getPopover(component).find('button[aria-expanded="true"]').trigger('click')
       await vi.waitFor(
         () =>
-          expect(component.find('[popover="auto"] button[aria-expanded="false"]').exists()).toBe(
-            true,
-          ),
+          expect(getPopover(component).find('button[aria-expanded="false"]').exists()).toBe(true),
         { timeout: 2000 },
       )
       component.unmount()
@@ -307,21 +321,21 @@ describe('VersionSelector', () => {
         props: { ...defaultProps, versions: { '1.0.0': {}, '0.9.0': {} } },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      await component.find('[popover="auto"] button[aria-expanded="false"]').trigger('click')
+      await openPopover(component)
+      await getPopover(component).find('button[aria-expanded="false"]').trigger('click')
 
       await vi.waitFor(() =>
         expect(mockFetchAllPackageVersions).toHaveBeenCalledWith('test-package'),
       )
       await vi.waitFor(() => {
-        expect(component.find('[popover="auto"]').text()).toContain('0.9')
-        expect(component.find('[popover="auto"] button[aria-expanded="true"]').exists()).toBe(true)
+        expect(getPopover(component).text()).toContain('0.9')
+        expect(getPopover(component).find('button[aria-expanded="true"]').exists()).toBe(true)
       })
 
-      await component.find('[popover="auto"] button[aria-expanded="true"]').trigger('click')
+      await getPopover(component).find('button[aria-expanded="true"]').trigger('click')
       await vi.waitFor(() => {
-        expect(component.find('[popover="auto"]').text()).not.toContain('0.9')
-        expect(component.find('[popover="auto"] button[aria-expanded="false"]').exists()).toBe(true)
+        expect(getPopover(component).text()).not.toContain('0.9')
+        expect(getPopover(component).find('button[aria-expanded="false"]').exists()).toBe(true)
       })
       component.unmount()
     })
@@ -339,25 +353,26 @@ describe('VersionSelector', () => {
           ...defaultProps,
           currentVersion: '1.2.0',
           versions: { '1.2.0': {}, '1.1.0': {}, '1.0.0': {}, '0.9.0': {} },
+          distTags: { latest: '1.2.0' },
         },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      await component.find('[popover="auto"] button[aria-expanded="false"]').trigger('click')
+      await openPopover(component)
+      await getPopover(component).find('button[aria-expanded="false"]').trigger('click')
 
       await vi.waitFor(() =>
         expect(mockFetchAllPackageVersions).toHaveBeenCalledWith('test-package'),
       )
       await vi.waitFor(() => {
-        const text = component.find('[popover="auto"]').text()
+        const text = getPopover(component).text()
         expect(text).toContain('1.1.0')
         expect(text).toContain('1.0.0')
         expect(text).not.toContain('0.9')
       })
 
-      await component.find('[popover="auto"] button[aria-expanded="true"]').trigger('click')
+      await getPopover(component).find('button[aria-expanded="true"]').trigger('click')
       await vi.waitFor(() => {
-        const text = component.find('[popover="auto"]').text()
+        const text = getPopover(component).text()
         expect(text).not.toContain('1.1.0')
         expect(text).not.toContain('1.0.0')
         expect(text).not.toContain('0.9')
@@ -375,13 +390,13 @@ describe('VersionSelector', () => {
         props: { ...defaultProps, versions: { '1.0.0': {}, '0.9.0': {} } },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      await component.find('[popover="auto"] button[aria-expanded="false"]').trigger('click')
+      await openPopover(component)
+      await getPopover(component).find('button[aria-expanded="false"]').trigger('click')
 
-      await vi.waitFor(() => expect(component.find('[popover="auto"]').text()).toContain('0.9'))
+      await vi.waitFor(() => expect(getPopover(component).text()).toContain('0.9'))
 
       await component.setProps({ distTags: { latest: '1.0.0' } })
-      await vi.waitFor(() => expect(component.find('[popover="auto"]').text()).not.toContain('0.9'))
+      await vi.waitFor(() => expect(getPopover(component).text()).not.toContain('0.9'))
       component.unmount()
     })
 
@@ -396,8 +411,8 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      const expandButton = component.find('[popover="auto"] button[aria-expanded]')
+      await openPopover(component)
+      const expandButton = getPopover(component).find('button[aria-expanded]')
       await expandButton.trigger('click')
       await expandButton.trigger('click')
 
@@ -432,8 +447,8 @@ describe('VersionSelector', () => {
         },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      await component.find('[popover="auto"] button[aria-expanded]').trigger('click')
+      await openPopover(component)
+      await getPopover(component).find('button[aria-expanded]').trigger('click')
 
       await vi.waitFor(() => expect(mockFetchAllPackageVersions).toHaveBeenCalled())
       await vi.waitFor(
@@ -455,8 +470,8 @@ describe('VersionSelector', () => {
         props: { ...defaultProps, distTags: { latest: '1.0.0', stable: '1.0.0' } },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      const popover = component.find('[popover="auto"]')
+      await openPopover(component)
+      const popover = getPopover(component)
       expect(popover.text()).toContain('latest')
       expect(popover.text()).toContain('stable')
       component.unmount()
@@ -467,7 +482,7 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await openPopover(component)
       const latestTags = component.findAll('span').filter(s => s.text() === 'latest')
       expect(latestTags.length).toBeGreaterThan(0)
       expect(latestTags.some(t => t.classes().some(c => c.includes('badge-accent')))).toBe(true)
@@ -484,8 +499,8 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      await component.find('[popover="auto"] button[aria-expanded]').trigger('click')
+      await openPopover(component)
+      await getPopover(component).find('button[aria-expanded]').trigger('click')
 
       await vi.waitFor(() => {
         expect(component.find('.i-svg-spinners\\:ring-resize').exists()).toBe(true)
@@ -498,14 +513,14 @@ describe('VersionSelector', () => {
   describe('accessibility', () => {
     it('trigger button has popovertarget wired to the popover id', async () => {
       const component = await mountSuspended(VersionSelector, { props: defaultProps })
-      const button = component.find('[data-testid="version-selector-button"]')
-      const popover = component.find('[popover="auto"]')
+      const button = getTrigger(component)
+      const popover = getPopover(component)
       expect(button.attributes('popovertarget')).toBe(popover.attributes('id'))
     })
 
     it('popover has an accessible aria-label', async () => {
       const component = await mountSuspended(VersionSelector, { props: defaultProps })
-      expect(component.find('[popover="auto"]').attributes('aria-label')).toBeTruthy()
+      expect(getPopover(component).attributes('aria-label')).toBeTruthy()
     })
 
     it('component is wrapped in a nav with an aria-label', async () => {
@@ -518,7 +533,7 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await openPopover(component)
       const currentLink = component.find('a[aria-current="page"]')
       expect(currentLink.exists()).toBe(true)
       expect(currentLink.text()).toContain('1.0.0')
@@ -535,7 +550,7 @@ describe('VersionSelector', () => {
         },
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
+      await openPopover(component)
       const oldLink = component.findAll('a[href]').find(a => a.text().includes('1.0.0'))
       expect(oldLink?.attributes('aria-current')).toBeUndefined()
       component.unmount()
@@ -546,8 +561,8 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      const expandButton = component.find('[popover="auto"] button[aria-expanded]')
+      await openPopover(component)
+      const expandButton = getPopover(component).find('button[aria-expanded]')
       expect(expandButton.exists()).toBe(true)
       expect(['true', 'false']).toContain(expandButton.attributes('aria-expanded'))
       expect(expandButton.attributes('aria-controls')).toBeTruthy()
@@ -559,8 +574,8 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      const expandButton = component.find('[popover="auto"] button[aria-label]')
+      await openPopover(component)
+      const expandButton = getPopover(component).find('button[aria-label]')
       expect(expandButton.exists()).toBe(true)
       expect(expandButton.attributes('aria-label')).toBeTruthy()
       component.unmount()
@@ -581,8 +596,8 @@ describe('VersionSelector', () => {
         props: defaultProps,
         attachTo: document.body,
       })
-      await component.find('[data-testid="version-selector-button"]').trigger('click')
-      await component.find('[popover="auto"] button[aria-expanded]').trigger('click')
+      await openPopover(component)
+      await getPopover(component).find('button[aria-expanded]').trigger('click')
 
       await vi.waitFor(() => {
         expect(consoleSpy).toHaveBeenCalledWith('Failed to load versions:', expect.any(Error))
@@ -608,17 +623,17 @@ describe('VersionSelector', () => {
         },
         attachTo: document.body,
       })
-      const button = component.find('[data-testid="version-selector-button"]')
+      const button = getTrigger(component)
       await button.trigger('click')
 
-      const expandButtons = component.findAll('[popover="auto"] button[aria-expanded="false"]')
+      const expandButtons = getPopover(component).findAll('button[aria-expanded="false"]')
       if (expandButtons[0]) await expandButtons[0].trigger('click')
       await vi.waitFor(() => expect(mockFetchAllPackageVersions).toHaveBeenCalledTimes(1))
 
       await button.trigger('click')
       await button.trigger('click')
 
-      const updatedButtons = component.findAll('[popover="auto"] button[aria-expanded="false"]')
+      const updatedButtons = getPopover(component).findAll('button[aria-expanded="false"]')
       if (updatedButtons[0]) await updatedButtons[0].trigger('click')
       expect(mockFetchAllPackageVersions).toHaveBeenCalledTimes(1)
       component.unmount()
