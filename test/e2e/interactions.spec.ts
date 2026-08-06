@@ -30,7 +30,7 @@ test.describe('Compare Page', () => {
     await expect(grid).toBeVisible({ timeout: 15000 })
 
     // Add another package via the input
-    const input = page.locator('#package-search')
+    const input = page.getByRole('combobox', { name: 'Search for packages' })
     await input.fill('nuxt')
 
     // Wait for search results and click on nuxt
