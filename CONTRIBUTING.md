@@ -264,9 +264,9 @@ pnpm mock-connector --empty        # start with no prepopulated data
 
 ## Code style
 
-When committing changes, try to keep an eye out for unintended formatting updates. These can make a pull request look noisier than it really is and slow down the review process. Sometimes IDEs automatically reformat files on save, which can unintentionally introduce extra changes. To prevent this, you can configure your IDE to use `oxc` as the formatter, which is aligned with the linter used inside the workflows for this project. Alternatively, you can manually run `pnpm lint:fix` before committing to fix formatting across the whole project.
+When committing changes, try to keep an eye out for unintended formatting updates. These can make a pull request look noisier than it really is and slow down the review process. Sometimes IDEs automatically reformat files on save, which can unintentionally introduce extra changes if your formatter is not configured correctly. To prevent this, you can configure your IDE to use `oxc` as the formatter, which is aligned with the linter used inside the workflows for this project.
 
-Before you commit, staged files will automatically be linted and formatted using a [pre-commit hook](#pre-commit-hooks).
+Before you commit, staged files will automatically be linted and formatted using a [pre-commit hook](#pre-commit-hooks). Alternatively, you can manually run `pnpm lint:fix` before committing to fix formatting across the whole project.
 
 ### npmx name
 
@@ -1238,10 +1238,10 @@ This provides the following benefits:
 
 Before committing, the following things will run against staged files:
 
-- **`*.{js,ts,mjs,cjs,vue}`** — `vp lint --fix` (auto-fix lint errors)
-- **`*.vue`** — UnoCSS class checker
-- **`*.{js,ts,mjs,cjs,vue,json,yml,md,html,css}`** — `vp fmt` (auto-format)
-- **`i18n/locales/*`** — regenerate Lunaria tracking data and `i18n/schema.json`
+- **`*.{js,ts,mjs,cjs,vue}`** - `vp lint --fix` (auto-fix lint errors)
+- **`*.vue`** - UnoCSS class checker
+- **`*.{js,ts,mjs,cjs,vue,json,yml,md,html,css}`** - `vp fmt` (auto-format)
+- **`i18n/locales/*`** - regenerate Lunaria tracking data and `i18n/schema.json`
 
 If something can't be fixed automatically, the commit will be blocked. Run `pnpm lint:fix` beforehand to resolve any issues proactively.
 
